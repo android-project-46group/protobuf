@@ -22,8 +22,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DownloadClient interface {
-	// Health はヘルスチェックを行うエンドポイントです。
+	// ヘルスチェックを行うエンドポイント。
 	Health(ctx context.Context, in *HealthRequest, opts ...grpc.CallOption) (*HealthReply, error)
+	// 写真も含むメンバー情報一覧を Zip でダウンロードするエンドポイント。
+	DownloadMembersZip(ctx context.Context, in *DownloadMembersZipRequest, opts ...grpc.CallOption) (Download_DownloadMembersZipClient, error)
 }
 
 type downloadClient struct {
@@ -43,12 +45,46 @@ func (c *downloadClient) Health(ctx context.Context, in *HealthRequest, opts ...
 	return out, nil
 }
 
+func (c *downloadClient) DownloadMembersZip(ctx context.Context, in *DownloadMembersZipRequest, opts ...grpc.CallOption) (Download_DownloadMembersZipClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Download_ServiceDesc.Streams[0], "/download.service.Download/DownloadMembersZip", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &downloadDownloadMembersZipClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Download_DownloadMembersZipClient interface {
+	Recv() (*DownloadMembersZipReply, error)
+	grpc.ClientStream
+}
+
+type downloadDownloadMembersZipClient struct {
+	grpc.ClientStream
+}
+
+func (x *downloadDownloadMembersZipClient) Recv() (*DownloadMembersZipReply, error) {
+	m := new(DownloadMembersZipReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // DownloadServer is the server API for Download service.
 // All implementations must embed UnimplementedDownloadServer
 // for forward compatibility
 type DownloadServer interface {
-	// Health はヘルスチェックを行うエンドポイントです。
+	// ヘルスチェックを行うエンドポイント。
 	Health(context.Context, *HealthRequest) (*HealthReply, error)
+	// 写真も含むメンバー情報一覧を Zip でダウンロードするエンドポイント。
+	DownloadMembersZip(*DownloadMembersZipRequest, Download_DownloadMembersZipServer) error
 	mustEmbedUnimplementedDownloadServer()
 }
 
@@ -58,6 +94,9 @@ type UnimplementedDownloadServer struct {
 
 func (UnimplementedDownloadServer) Health(context.Context, *HealthRequest) (*HealthReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Health not implemented")
+}
+func (UnimplementedDownloadServer) DownloadMembersZip(*DownloadMembersZipRequest, Download_DownloadMembersZipServer) error {
+	return status.Errorf(codes.Unimplemented, "method DownloadMembersZip not implemented")
 }
 func (UnimplementedDownloadServer) mustEmbedUnimplementedDownloadServer() {}
 
@@ -90,6 +129,27 @@ func _Download_Health_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Download_DownloadMembersZip_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DownloadMembersZipRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DownloadServer).DownloadMembersZip(m, &downloadDownloadMembersZipServer{stream})
+}
+
+type Download_DownloadMembersZipServer interface {
+	Send(*DownloadMembersZipReply) error
+	grpc.ServerStream
+}
+
+type downloadDownloadMembersZipServer struct {
+	grpc.ServerStream
+}
+
+func (x *downloadDownloadMembersZipServer) Send(m *DownloadMembersZipReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // Download_ServiceDesc is the grpc.ServiceDesc for Download service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -102,6 +162,12 @@ var Download_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Download_Health_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "DownloadMembersZip",
+			Handler:       _Download_DownloadMembersZip_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "donload.proto",
 }
