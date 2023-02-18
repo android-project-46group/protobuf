@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "go/protobuf";
+
+package download.service;
+
+// Download 関連の gRPC のサービス
+service Download {
+
+    // Health はヘルスチェックを行うエンドポイントです。
+  rpc Health(HealthRequest) returns (HealthReply) {}
+}
+
+message HealthRequest {}
+message HealthReply {
+  string message = 1;
+}
