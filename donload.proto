@@ -7,11 +7,30 @@ package download.service;
 // Download 関連の gRPC のサービス
 service Download {
 
-    // Health はヘルスチェックを行うエンドポイントです。
-  rpc Health(HealthRequest) returns (HealthReply) {}
+  // ヘルスチェックを行うエンドポイント。
+  rpc Health(HealthRequest) returns (HealthReply);
+
+  // 写真も含むメンバー情報一覧を Zip でダウンロードするエンドポイント。
+  rpc DownloadMembersZip(DownloadMembersZipRequest) returns (stream DownloadMembersZipReply);
 }
 
 message HealthRequest {}
 message HealthReply {
   string message = 1;
+}
+
+// ダウンロード対象にするグループ名。
+enum GroupType {
+  GROUP_ALL = 0;
+  NOGIZAKA = 1;
+  SAKURAZAKA = 2;
+  HINATAZAKA = 3;
+}
+
+message DownloadMembersZipRequest {
+  GroupType group = 1;
+}
+
+message DownloadMembersZipReply {
+  bytes data = 1;
 }
